@@ -1,0 +1,44 @@
+# Netlify configuration — static site, no build step, no server secrets.
+# Model A: every visitor supplies their own API keys, which stay in their browser.
+
+[build]
+  publish = "."
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    # connect-src is the important one: it pins where the browser may send a
+    # request, so a successful XSS still cannot ship localStorage keys elsewhere.
+    Content-Security-Policy = """
+      default-src 'self';
+      script-src 'self' 'unsafe-inline';
+      style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+      font-src 'self' https://fonts.gstatic.com;
+      img-src 'self' data:;
+      connect-src 'self'
+                  https://api.groq.com
+                  https://generativelanguage.googleapis.com
+                  https://openrouter.ai
+                  https://api.mistral.ai
+                  https://api.tavily.com
+                  https://api.exa.ai;
+      object-src 'none';
+      base-uri 'none';
+      frame-ancestors 'none';
+      form-action 'none';
+    """
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "DENY"
+    Referrer-Policy = "no-referrer"
+    Permissions-Policy = "geolocation=(), microphone=(), camera=(), payment=()"
+
+# Always serve the app shell fresh so a redeploy is visible immediately.
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+[[headers]]
+  for = "/script.js"
+  [headers.values]
+    Cache-Control = "no-cache"

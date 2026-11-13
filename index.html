@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dev's AI System — multi-provider AI console</title>
+  <meta name="description" content="Ask once, get four answers. Routes each prompt across Groq, Gemini, OpenRouter and Mistral, decides whether a live web search is needed, and exports the result as PDF or Word. Bring your own API keys — they stay in your browser.">
+  <meta name="color-scheme" content="dark">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&family=Montserrat:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<noscript>
+  <div style="position:fixed;inset:0;z-index:999;display:flex;align-items:center;justify-content:center;
+              background:#050a05;color:#00ff41;font-family:'Courier New',monospace;text-align:center;padding:24px;">
+    This console needs JavaScript. Enable it and reload the page.
+  </div>
+</noscript>
+
+<!-- ─────────────────────────────────────────
+     MATRIX RAIN BACKGROUND
+───────────────────────────────────────── -->
+<canvas id="matrix-canvas"></canvas>
+
+<!-- ─────────────────────────────────────────
+     SIDEBAR OVERLAY (click to close)
+───────────────────────────────────────── -->
+<div id="sidebar-overlay" onclick="closeSidebar()"></div>
+
+<!-- ─────────────────────────────────────────
+     SIDEBAR PANEL (slides in from right)
+───────────────────────────────────────── -->
+<aside id="sidebar" aria-label="Model Registry">
+
+  <div class="sidebar-head">
+    <div class="sidebar-title-wrap">
+      <span class="sidebar-icon">⊞</span>
+      <span class="sidebar-title">MODEL REGISTRY</span>
+    </div>
+    <div class="sidebar-head-right">
+      <span id="sidebar-active-count" class="sidebar-active-count">0 ACTIVE</span>
+      <button class="sidebar-close-btn" onclick="closeSidebar()" title="Close">✕</button>
+    </div>
+  </div>
+
+  <div class="sidebar-filter-wrap">
+    <input
+      type="text"
+      id="sidebar-filter"
+      class="sidebar-filter"
+      placeholder="Filter models or providers…"
+      oninput="filterSidebar(this.value)"
+      autocomplete="off"
+      spellcheck="false"
+    >
+    <span class="sidebar-filter-icon">⌕</span>
+  </div>
+
+  <div class="sidebar-legend">
+    <span class="legend-item"><span class="tier-dot heavy"></span>HVY</span>
+    <span class="legend-item"><span class="tier-dot mid"></span>MID</span>
+    <span class="legend-item"><span class="tier-dot speed"></span>SPD</span>
+    <span class="legend-sep">·</span>
+    <span class="legend-item"><span class="active-dot"></span>ACTIVE</span>
+  </div>
+
+  <!-- Provider groups injected by renderSidebarModels() in script.js -->
+  <div id="sidebar-list" class="sidebar-list" role="list"></div>
+
+  <div class="sidebar-footer">
+    Click any model to add it as an extra response block
+  </div>
+
+</aside>
+
+
+<!-- ─────────────────────────────────────────
+     BYOK KEY PANEL
+     Keys are typed here, saved to this
+     browser's localStorage by saveKeys(),
+     and read back on boot by loadKeys().
+     Nothing is stored in script.js.
+───────────────────────────────────────── -->
+<div id="keys-modal" onclick="if (event.target === this) closeKeysModal()"
+     style="display:none;position:fixed;inset:0;z-index:60;align-items:center;justify-content:center;
+            background:rgba(0,0,0,0.74);">
+
+  <div style="width:min(560px,92vw);max-height:86vh;overflow-y:auto;background:#070d07;
+              border:1px solid #00ff41;border-radius:10px;padding:20px 22px;
+              box-shadow:0 0 34px rgba(0,255,65,0.18);font-family:'Poppins',sans-serif;color:#c8e6c8;">
+
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+      <div style="font-family:'Montserrat',sans-serif;font-weight:700;letter-spacing:1px;
+                  color:#00ff41;font-size:15px;">🔑 API KEYS · BYOK</div>
+      <button onclick="closeKeysModal()" title="Close"
+              style="background:none;border:1px solid #1f3a1f;color:#8fbf8f;border-radius:6px;
+                     padding:2px 9px;cursor:pointer;">✕</button>
+    </div>
+
+    <p style="margin:0 0 14px;font-size:11.5px;line-height:1.55;color:#7fa87f;">
+      Paste at least one key to start. Keys are kept in this browser's localStorage and are
+      sent only to the provider you are calling — never to this site, never into
+      <code>script.js</code>. Clearing this site's data removes them.
+    </p>
+    <p style="margin:0 0 16px;font-size:10.5px;line-height:1.5;color:#5f7a5f;">
+      One key is enough to run: every provider you leave empty is simply skipped.
+      Groq and Gemini have free tiers; Tavily is only needed for live web search.
+    </p>
+
+    <!-- Input rows injected by _buildKeyFields() in script.js -->
+    <div id="keys-fields"></div>
+
+    <div id="keys-summary"  style="margin-top:14px;font-size:11px;color:#7fa87f;"></div>
+    <div id="keys-feedback" style="margin-top:6px;font-size:11px;color:#00ff41;min-height:14px;"></div>
+
+    <div style="display:flex;gap:8px;margin-top:16px;">
+      <button onclick="saveKeys()"
+              style="flex:1;background:#00ff41;color:#04140a;border:none;border-radius:6px;
+                     padding:9px 0;font-weight:600;letter-spacing:1px;cursor:pointer;
+                     font-family:'Montserrat',sans-serif;font-size:11.5px;">SAVE</button>
+      <button id="keys-toggle-btn" data-shown="0" onclick="toggleKeyVisibility()"
+              style="background:none;border:1px solid #1f3a1f;color:#8fbf8f;border-radius:6px;
+                     padding:9px 14px;cursor:pointer;font-size:11.5px;">👁 SHOW</button>
+      <button onclick="clearKeys()"
+              style="background:none;border:1px solid #4a1f1f;color:#d98a8a;border-radius:6px;
+                     padding:9px 14px;cursor:pointer;font-size:11.5px;">CLEAR</button>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ─────────────────────────────────────────
+     MAIN APPLICATION
+───────────────────────────────────────── -->
+<div class="app">
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo">
+      <span class="logo-bracket">[</span>DEV AI INTERFERENCE ORCHESTRATION<span class="logo-bracket">]</span>
+    </div>
+
+    <div class="header-right">
+      <!-- Intent category, decided by the 2-model vote -->
+      <span id="cat-badge" class="category-badge">INTENT: —</span>
+
+      <!-- Shows which providers have keys configured -->
+      <span id="key-badge" class="category-badge">CHECKING KEYS…</span>
+
+      <!-- Toggles document mode: answers get drafted as an exportable document -->
+      <button id="doc-mode-btn" class="btn-models" onclick="toggleDocMode()"
+              title="Document mode off — answers are normal chat replies">
+        📄&nbsp;DOC: OFF
+      </button>
+
+      <!-- Opens the BYOK key panel -->
+      <button class="btn-models" onclick="openKeysModal()" title="Manage API keys (saved in this browser)">
+        🔑&nbsp;KEYS
+      </button>
+
+      <!-- Opens sidebar -->
+      <button class="btn-models" onclick="toggleSidebar()" title="Open model registry">
+        ⊞&nbsp;MODELS
+      </button>
+
+      <button class="btn-reset" onclick="resetAll()">RESET</button>
+    </div>
+  </header>
+
+
+  <!-- PROMPT INPUT -->
+  <section class="prompt-section">
+    <div class="prompt-label">PROMPT INPUT</div>
+
+    <div class="prompt-wrap">
+      <textarea
+        id="prompt"
+        placeholder="Enter your prompt… (Enter to execute · Shift+Enter for newline)"
+        onkeydown="handleKey(event)"
+        rows="3"
+      ></textarea>
+      <button id="submit-btn" class="btn-submit" onclick="submitPrompt()">EXECUTE</button>
+    </div>
+
+    <!--
+      Two status lines:
+      #intent-status — the category vote ("INTENT: coding · intent 2/2")
+      #search-status — one line on the web search: whether it ran, through
+                       which API, and which model's vote called for it
+    -->
+    <div id="intent-status" class="intent-status" aria-live="polite"></div>
+    <div id="search-status" class="search-status" aria-live="polite"></div>
+  </section>
+
+
+  <!-- RESPONSE GRID
+       Always 4 primary cards (built by buildCards()).
+       Extra cards from sidebar clicks are prepended before the 4.
+  -->
+  <div id="response-grid" class="grid" role="list"></div>
+
+
+  <footer>
+    <span class="footer-accent">DEV AI SYSTEM</span> &middot; interference orchestration across
+    <span class="footer-accent">Groq</span> &middot;
+    <span class="footer-accent">Gemini</span> &middot;
+    <span class="footer-accent">OpenRouter</span> &middot;
+    <span class="footer-accent">Mistral</span>
+    <br>
+    Intent by 2-model vote &middot; web search by 3-model consensus &middot;
+    four answers per prompt &middot;
+    <span class="footer-accent">keys stay in this browser</span>
+  </footer>
+
+</div><!-- /.app -->
+
+<script src="script.js"></script>
+</body>
+</html>

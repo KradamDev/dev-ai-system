@@ -1,0 +1,58 @@
+# ─────────────────────────────────────────────
+#  Dev AI System — .gitignore
+#  Static site: index.html · script.js · style.css · netlify.toml
+#  Those five stay tracked. Everything below must never be committed.
+# ─────────────────────────────────────────────
+
+# ── Secrets — API keys live in the browser's localStorage, never in the repo ──
+.env
+.env.*
+!.env.example
+*.local
+secrets.*
+keys.txt
+keys*.json
+*.pem
+*.key
+
+# ── Netlify local state (CLI, dev server, function bundles) ──
+.netlify/
+
+# ── Dependencies (no build step today; here for whatever comes next) ──
+node_modules/
+package-lock.json.bak
+.npm/
+.pnpm-store/
+
+# ── Build output and caches ──
+dist/
+build/
+.cache/
+.parcel-cache/
+coverage/
+
+# ── Logs ──
+*.log
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ── Editor and IDE ──
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+*~
+
+# ── OS noise ──
+.DS_Store
+._*
+Thumbs.db
+desktop.ini
+
+# ── Local scratch files ──
+*.bak
+*.orig
+*.tmp
+scratch/
