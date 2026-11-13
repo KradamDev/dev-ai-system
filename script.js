@@ -18,6 +18,7 @@
    §14  Submit
    §15  Card Actions & Key Handler
    §16  Matrix Rain
+   §16b Mobile Nav Drawer
    §17  Document Export  (PDF + DOCX, browser-only)
    
    ── NOV 2026 DEPRECATION PASS ────────────────────────────
@@ -56,6 +57,14 @@
    · Search status is now a single line: whether a search ran, through
      which API (Tavily/Exa), and which model's vote called for it.
 ═══════════════════════════════════════════════════════════ */
+
+
+// ─────────────────────────────────────────
+//  §0. BUILD STAMP
+//  Logged at startup, so you can tell at a
+//  glance which script.js this browser got.
+// ─────────────────────────────────────────
+const APP_VERSION = "2026-11-14";
 
 
 // ─────────────────────────────────────────
@@ -183,6 +192,7 @@ function renderKeysModal() {
 }
 
 function openKeysModal() {
+  closeNav();
   renderKeysModal();
   const m = document.getElementById("keys-modal");
   if (m) m.style.display = "flex";
@@ -1579,6 +1589,7 @@ function toggleSidebar() {
 }
 
 function openSidebar() {
+  closeNav();
   document.getElementById("sidebar").classList.add("open");
   const ov = document.getElementById("sidebar-overlay");
   ov.style.display = "block";
@@ -1878,9 +1889,7 @@ async function submitPrompt() {
 
   // ── Step 2: augment prompt with web search (if applicable) ────
   const augmentedPrompt = await augmentWithSearch(userPrompt, needsSearch, searchProposers);
-  // Document mode appends the drafting brief — search still runs on the bare prompt
-  const finalPrompt = docMode ? augmentedPrompt + "\n\n" + DOC_INSTRUCTIONS : augmentedPrompt;
-  currentLastPrompt = finalPrompt; // extra cards also get the same context
+  currentLastPrompt = augmentedPrompt; // extra cards also get the same context
 
   updateProviderBadge();
 
@@ -1899,7 +1908,7 @@ async function submitPrompt() {
   // ── Step 4: run 4 in parallel ─────────────────────────────────
   await Promise.allSettled(
     assignments.slice(0, 4).map(({ provider, modelId }, i) =>
-      generateResponse(i, provider, modelId, finalPrompt)
+      generateResponse(i, provider, modelId, augmentedPrompt)
     )
   );
 
@@ -1930,6 +1939,7 @@ function copyResponse(i) {
 }
 
 function resetAll() {
+  closeNav();
   cards.forEach(c => c?.abortController?.abort());
   document.querySelectorAll(".card-extra").forEach(el => { el._ac?.abort(); el.remove(); });
 
@@ -1993,6 +2003,60 @@ function handleKey(e) {
 
 
 // ─────────────────────────────────────────
+//  §16b. MOBILE NAV DRAWER
+//  Below 720px the header collapses to the
+//  logo plus a hamburger; the controls slide
+//  in from the right as a drawer. Desktop is
+//  untouched — the toggle is display:none.
+// ─────────────────────────────────────────
+function _navPanel() { return document.getElementById("nav-panel"); }
+function _navToggle() { return document.getElementById("nav-toggle"); }
+
+function openNav() {
+  const panel = _navPanel();
+  const ov    = document.getElementById("nav-overlay");
+  if (panel) panel.classList.add("open");
+  const t = _navToggle();
+  if (t) t.setAttribute("aria-expanded", "true");
+  if (ov) {
+    ov.style.display = "block";
+    requestAnimationFrame(() => ov.classList.add("visible"));
+  }
+}
+
+function closeNav() {
+  const panel = _navPanel();
+  const ov    = document.getElementById("nav-overlay");
+  if (panel) panel.classList.remove("open");
+  const t = _navToggle();
+  if (t) t.setAttribute("aria-expanded", "false");
+  if (ov) {
+    ov.classList.remove("visible");
+    setTimeout(() => {
+      if (!ov.classList.contains("visible")) ov.style.display = "none";
+    }, 300);
+  }
+}
+
+function toggleNav() {
+  const panel = _navPanel();
+  if (!panel) {
+    console.warn("[Dev AI System] #nav-panel not found — index.html is older than script.js. " +
+                 "Deploy both files from the same build.");
+    return;
+  }
+  if (panel.classList.contains("open")) closeNav();
+  else openNav();
+}
+
+// Escape closes the drawer; widening past the breakpoint resets it.
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeNav(); });
+window.addEventListener("resize", () => {
+  if (window.innerWidth > 720) closeNav();
+});
+
+
+// ─────────────────────────────────────────
 //  §17. DOCUMENT EXPORT  (browser-only)
 //  Turns a finished card into a real file.
 //    · PDF  — the browser's own print pipeline
@@ -2001,29 +2065,6 @@ function handleKey(e) {
 //             no library, no network, no key
 //  Nothing leaves the page.
 // ─────────────────────────────────────────
-
-let docMode = false;
-
-const DOC_INSTRUCTIONS =
-  "Write the answer as a finished document, not a chat reply.\n" +
-  "- Start with a single '# Title' line, then at most one short italic line of context.\n" +
-  "- Break the body into '## Section' headings; lead each section with its one-line finding.\n" +
-  "- Prefer short paragraphs, '-' bullets for enumerations, and a markdown table when comparing things.\n" +
-  "- No preamble, no 'here is your document', no closing offer to help further.\n" +
-  "- Use **bold** sparingly, on the single most important phrase per section.";
-
-function toggleDocMode() {
-  docMode = !docMode;
-  const btn = document.getElementById("doc-mode-btn");
-  if (!btn) return;
-  btn.textContent = docMode ? "📄 DOC: ON" : "📄 DOC: OFF";
-  btn.style.color       = docMode ? "#04140a" : "";
-  btn.style.background  = docMode ? "#00ff41" : "";
-  btn.style.borderColor = docMode ? "#00ff41" : "";
-  btn.title = docMode
-    ? "Document mode on — answers are drafted as a document you can export"
-    : "Document mode off — answers are normal chat replies";
-}
 
 // ── Markdown → block list (headings, lists, tables, code) ─────
 // The chat renderer stays untouched; this parser only feeds exports.
@@ -2493,6 +2534,13 @@ function exportDocx(id) {
 // ─────────────────────────────────────────
 //  INIT
 // ─────────────────────────────────────────
+console.info(`[Dev AI System] build ${APP_VERSION} loaded`);
+
+if (!document.getElementById("nav-panel") || !document.getElementById("nav-toggle")) {
+  console.warn("[Dev AI System] navigation markup missing — index.html and script.js are " +
+               "from different builds. Re-deploy both.");
+}
+
 loadKeys();
 renderSidebarModels();
 updateProviderBadge();
