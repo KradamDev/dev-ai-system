@@ -637,6 +637,68 @@ textarea#prompt:focus {
 
 
 /* ─────────────────────────────────────────
+   §6b  MOBILE NAVIGATION
+   A hamburger opens .header-right as a
+   slide-in drawer below 720px. On desktop
+   none of this renders: the toggle is
+   display:none and the drawer rules live
+   inside the media query.
+───────────────────────────────────────── */
+.nav-toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 36px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-size: 17px;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color 0.18s, border-color 0.18s, background 0.18s;
+  -webkit-tap-highlight-color: transparent;
+}
+.nav-toggle:hover,
+.nav-toggle:active {
+  color: var(--text);
+  border-color: var(--border-focus);
+  background: var(--surface-raised);
+}
+
+.nav-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.62);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  z-index: calc(var(--sidebar-z) - 1);
+  opacity: 0;
+  transition: opacity 0.28s ease;
+}
+.nav-overlay.visible { opacity: 1; }
+
+/* Drawer title row — only meaningful inside the mobile drawer */
+.nav-drawer-head { display: none; }
+
+.nav-close {
+  background: none;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1;
+  padding: 6px 10px;
+  cursor: pointer;
+  transition: color 0.18s, border-color 0.18s;
+}
+.nav-close:hover { color: var(--text); border-color: var(--border-focus); }
+
+
+/* ─────────────────────────────────────────
    §7  SIDEBAR
 ───────────────────────────────────────── */
 #sidebar-overlay {
@@ -947,6 +1009,18 @@ footer {
 }
 .footer-accent { color: var(--text-muted); }
 
+.footer-credit {
+  margin-top: 12px;
+  font-size: 10.5px;
+  letter-spacing: 0.8px;
+  color: var(--text-faint);
+}
+.footer-credit strong {
+  color: var(--accent);
+  font-weight: 600;
+  letter-spacing: 1.2px;
+}
+
 
 /* ─────────────────────────────────────────
    §9  ANIMATIONS & KEYFRAMES
@@ -983,9 +1057,88 @@ footer {
   .grid           { grid-template-columns: 1fr; }
   .card-extra     { grid-column: 1; }
   .logo           { font-size: 13px; }
-  #key-badge      { display: none; }
   #sidebar        { width: min(var(--sidebar-w), 92vw); }
   .app            { padding: 0 14px 32px; }
+
+  /* ── Header collapses to logo + hamburger ── */
+  .nav-toggle { display: inline-flex; }
+
+  /* ── .header-right becomes the slide-in navigation drawer ── */
+  .header-right {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: min(300px, 86vw);
+    height: 100vh;
+    height: 100dvh;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    flex-wrap: nowrap;
+    gap: 10px;
+    padding: 16px 16px calc(20px + env(safe-area-inset-bottom));
+    background: var(--sidebar-bg);
+    border-left: 1px solid var(--border-strong);
+    box-shadow: -14px 0 44px rgba(0, 0, 0, 0.55);
+    transform: translateX(100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow-y: auto;
+    overflow-x: hidden;
+    z-index: var(--sidebar-z);
+    -webkit-overflow-scrolling: touch;
+  }
+  .header-right.open { transform: translateX(0); }
+
+  .nav-drawer-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 12px;
+    margin-bottom: 4px;
+    border-bottom: 1px solid var(--border);
+    font-family: var(--font-body);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.2px;
+    color: var(--text-muted);
+  }
+
+  /* ── Every control becomes a full-width, touch-sized row ── */
+  .header-right .category-badge,
+  .header-right .btn-models,
+  .header-right .btn-reset {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 12px 14px;
+    font-size: 13px;
+    border-radius: var(--radius-sm);
+    text-align: left;
+    white-space: normal;
+  }
+
+  /* the key badge was hidden on mobile — inside the drawer it fits */
+  #key-badge {
+    display: block;
+    max-width: none;
+    overflow: visible;
+    text-overflow: clip;
+    line-height: 1.4;
+  }
+
+  /* ── Prompt: stack the textarea above EXECUTE on narrow screens ── */
+  .prompt-wrap {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .btn-submit {
+    width: 100%;
+    height: 44px;
+    align-self: stretch;
+  }
 }
 
 /* ── Intent classifier vote panel ── */

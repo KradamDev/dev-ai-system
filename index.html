@@ -142,25 +142,31 @@
       <span class="logo-bracket">[</span>DEV AI SYSTEM<span class="logo-bracket">]</span>
     </div>
 
-    <div class="header-right">
+    <!-- Mobile only: opens the navigation drawer -->
+    <button class="nav-toggle" id="nav-toggle" onclick="toggleNav()"
+            aria-label="Open navigation" aria-expanded="false">
+      <span aria-hidden="true">☰</span>
+    </button>
+
+    <div class="header-right" id="nav-panel">
+      <!-- Drawer title — visible only when the drawer is open on mobile -->
+      <div class="nav-drawer-head">
+        <span>NAVIGATION</span>
+        <button class="nav-close" onclick="closeNav()" aria-label="Close navigation">✕</button>
+      </div>
+
       <!-- Intent category, decided by the 2-model vote -->
       <span id="cat-badge" class="category-badge">INTENT: —</span>
 
       <!-- Shows which providers have keys configured -->
       <span id="key-badge" class="category-badge">CHECKING KEYS…</span>
 
-      <!-- Toggles document mode: answers get drafted as an exportable document -->
-      <button id="doc-mode-btn" class="btn-models" onclick="toggleDocMode()"
-              title="Document mode off — answers are normal chat replies">
-        📄&nbsp;DOC: OFF
-      </button>
-
       <!-- Opens the BYOK key panel -->
       <button class="btn-models" onclick="openKeysModal()" title="Manage API keys (saved in this browser)">
         🔑&nbsp;KEYS
       </button>
 
-      <!-- Opens sidebar -->
+      <!-- Opens the model registry -->
       <button class="btn-models" onclick="toggleSidebar()" title="Open model registry">
         ⊞&nbsp;MODELS
       </button>
@@ -168,6 +174,9 @@
       <button class="btn-reset" onclick="resetAll()">RESET</button>
     </div>
   </header>
+
+  <!-- Backdrop for the mobile navigation drawer -->
+  <div id="nav-overlay" class="nav-overlay" onclick="closeNav()"></div>
 
 
   <!-- PROMPT INPUT -->
@@ -212,6 +221,8 @@
     Intent by 2-model vote &middot; web search by 3-model consensus &middot;
     four answers per prompt &middot;
     <span class="footer-accent">keys stay in this browser</span>
+
+    <div class="footer-credit">Made by <strong>KRADAM DEV</strong></div>
   </footer>
 
 </div><!-- /.app -->
